@@ -1,0 +1,111 @@
+#!/usr/bin/env python
+
+import asm4
+import moby2
+
+import optparse
+o = optparse.OptionParser()
+o.add_option('--retry', action='append', default=[],
+             help="Remove failed product so it will not say 'failed'.")
+o.add_option('--reset', action='append', default=[],
+             help="Remove product to force a rebuild.")
+o.add_option('--check', action='store_true',
+             help="Perform no actions except to check the product status.")
+o.add_option('--test-item', action='append',
+             help="Select one or more items for a test run.")
+o.add_option('--config-file', default='pipeline.in')
+opts, args = o.parse_args()
+
+
+cfg = moby2.util.MobyDict.from_file(opts.config_file)
+
+product_dict = {}
+for p in cfg['products']:
+    if p['name'] in product_dict:
+        raise ValueError, "Duplicate 'name'='%s' in products spec." % p['name']
+    product_dict[p['name']] = p
+
+mode = 'normal'
+if (opts.check or
+    (len(opts.reset) > 0) or
+    (len(opts.retry) > 0)):
+    mode = 'special'
+
+for pipeline_op in cfg['pipeline']:
+    op_params = cfg['global_params'].copy()
+
+    if pipeline_op['type'] == 'tod_name_loop':
+        if pipeline_op['source'] == 'column_file':
+            db = moby2.util.StructDB.from_column_file(
+                pipeline_op['filename'], pipeline_op['columns'])
+        else:
+            blech
+            
+        for basename in db['tod_name']:
+            if opts.test_item is not None:
+                if not basename in opts.test_item:
+                    continue
+            print basename
+            loop_info = {
+                'tod_name': basename,
+                'first_five': basename[:5],
+                'array': basename[22:25],
+                'season': moby2.util.ctime.to_string(int(basename[:10]), '%Y'),
+                }
+            product_status = {}
+            rolling = True
+            to_do = [op for op in pipeline_op['products']]
+            while len(to_do) > 0:
+                product_name = to_do[0]
+                product_cfg = product_dict.get(product_name, None)
+                if product_cfg is None:
+                    raise ValueError, "product_name='%s' DNE" % product_name
+                # Check that dependencies are met.
+                params = op_params.copy()
+                params.update(product_cfg.get('params', {}))
+                deps = product_cfg.get('depends', [])
+
+                action = 'go'
+                for d in deps:
+                    if not d in product_status:
+                        if d in to_do:
+                            to_do.remove(d)
+                            to_do.insert(d, 0)
+                            action = 'postpone'
+                    elif product_status[d] != 'ok':
+                        deps_ok = False
+                        action = 'abort'
+                        break
+                if action == 'abort':
+                    break
+                elif action == 'postpone':
+                    continue
+
+                to_do.remove(product_name)
+                if product_cfg is None:
+                    raise ValueError, "product_name='%s' DNE" % product_name
+                params.update(loop_info)
+                obj = asm4.obj_map[product_cfg['type']](params)
+                stat = obj.status()
+                product_status[product_name] = stat
+                if mode == 'normal':
+                    print ' ', basename, product_name, stat
+                    if stat == 'new':
+                        obj.run()
+                        stat = obj.status()
+                        product_status[product_name] = stat
+                    if stat == 'ok':
+                        continue
+                    if stat == 'fail':
+                        break
+                elif opts.check:
+                    print ' ', basename, product_name, stat
+                    if stat != 'ok':
+                        break
+                elif product_name in opts.retry:
+                    if stat == 'fail':
+                        print 'Retrying %s for %s' % (product_name, basename)
+                        obj.reset_failed()
+                elif product_name in opts.reset:
+                    print 'Resetting %s for %s' % (product_name, basename)
+                    obj.reset_ok()

@@ -1,0 +1,56 @@
+# -*- mode: python -*-
+#
+# This is an input file for procedure.py.  It defines pipeline operations.
+#
+
+pipeline = [
+    {'type': 'tod_name_loop',
+     'source': 'column_file',
+     'filename': 'uranus_ar3.txt',
+     'columns': {'tod_name': 0},
+     'products': ['exists', 'cuts', 'fp_fit0', 'fp_fit1', 'fp_fit2'],
+     }
+    ]
+    
+global_params = {
+    'n_mpi': 16,
+    }
+
+products = [
+    {'name': 'exists', 'type': 'tod_exists'},
+    {'name': 'cuts',
+     'type': 'planet_cuts',
+     'params': {
+            'cuts_tag': 'tod1_140117b',
+            'params_file': 'planetCuts_{array}.in',
+            'output_prefix': 'cuts/{tod_name}/',
+            },
+     },
+
+    {'name': 'fp_fit0',
+     'type': 'fp_fit',
+     'depends': ['cuts'],
+     'params': {
+            'params_file': 'fp_step00_{array}.in',
+            'output_file': 'fp_output1/{tod_name}/step00_3_templated.txt',
+            }
+     },
+    {'name': 'fp_fit1',
+     'type': 'fp_fit',
+     'depends': ['fp_fit0'],
+     'params': {
+            'params_file': 'fp_step05_{array}.in',
+            'output_file': 'fp_output1/{tod_name}/step05_1_fitted.txt'
+            }
+     },
+    {'name': 'fp_fit2',
+     'type': 'fp_fit',
+     'depends': ['fp_fit1'],
+     'params': {
+            'params_file': 'fp_step10_{array}.in',
+            'output_file': 'fp_output1/{tod_name}/step10_0_cut.txt',
+            'n_mpi': 16,
+            }
+     },
+    ]
+
