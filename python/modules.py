@@ -1,4 +1,4 @@
-from base import PipelineOp, run_command
+from base import PipelineOp, PipelineScriptOp, run_command
 
 import moby2
 import os
@@ -37,6 +37,37 @@ class TODCuts(PipelineOp):
         if os.path.exists(self.cuts_path):
             os.remove(self.cuts_path)
         
+class TODMap(PipelineOp):
+    def __init__(self, params):
+        PipelineOp.__init__(self, params)
+        self.map_files = ['{output_prefix}'+x for x in 
+                          ['source.fits', 'source_I.fits',
+                           'source_split00.fits', 'source_I_split00.fits']]
+        self.run_file = self.subst('{output_prefix}planetMap.par')
+
+    def status(self):
+        for f in self.map_files:
+            if os.path.exists(self.subst(f)):
+                return 'ok'
+        was_run = os.path.exists(self.run_file)
+        if was_run:
+            return 'fail'
+        return 'new'
+
+    def run(self):
+        cmd = self.subst('planetMap {params_file} {tod_name} '
+                         '-o {output_prefix}')
+        return (run_command(cmd) == 0)
+
+    def reset_failed(self):
+        if os.path.exists(self.run_file):
+            os.remove(self.run_file)
+
+    def reset_ok(self):
+        for f in self.map_files:
+            if os.path.exists(f):
+                os.remove(self.map_file)
+        
 class FPFit(PipelineOp):
     def status(self):
         if os.path.exists(self.subst(self.data['output_file'])):
@@ -58,5 +89,7 @@ def get_modules():
     return {
         'tod_exists': TODExists,
         'planet_cuts': TODCuts,
+        'planet_map': TODMap,
         'fp_fit': FPFit,
+        'script': PipelineScriptOp,
         }

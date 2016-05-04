@@ -13,6 +13,8 @@ o.add_option('--check', action='store_true',
              help="Perform no actions except to check the product status.")
 o.add_option('--test-item', action='append',
              help="Select one or more items for a test run.")
+o.add_option('-p', '--product', action='append',
+             help="Select product to produce.")
 o.add_option('--config-file', default='pipeline.in')
 opts, args = o.parse_args()
 
@@ -31,6 +33,29 @@ if (opts.check or
     (len(opts.retry) > 0)):
     mode = 'special'
 
+obs_db = (None, None)
+def get_tod_info(params, basename):
+    global obs_db
+    info = {
+        'tod_name': basename,
+        'first_five': basename[:5],
+        'array': basename[22:25],
+        'season': moby2.util.ctime.to_string(int(basename[:10])-60*86400, '%Y'),
+        }
+    # Override/add from obs_db?
+    if 'obs_db_load' in params:
+        fn = params['obs_db']
+        if obs_db[0] == fn:
+            db = obs_db[1]
+        else:
+            db = moby2.util.StructDB.from_fits_table(fn)
+            obs_db = (fn, db)
+        i = db.select_inner({'tod_name': [basename]})
+        for k in params['obs_db_load']:
+            info[k] = db[k][i[0]]
+    return info
+
+
 for pipeline_op in cfg['pipeline']:
     op_params = cfg['global_params'].copy()
 
@@ -46,15 +71,13 @@ for pipeline_op in cfg['pipeline']:
                 if not basename in opts.test_item:
                     continue
             print basename
-            loop_info = {
-                'tod_name': basename,
-                'first_five': basename[:5],
-                'array': basename[22:25],
-                'season': moby2.util.ctime.to_string(int(basename[:10]), '%Y'),
-                }
+            loop_info = get_tod_info(op_params, basename)
             product_status = {}
             rolling = True
-            to_do = [op for op in pipeline_op['products']]
+            if opts.product is None:
+                to_do = [op for op in pipeline_op['products']]
+            else:
+                to_do = [op for op in opts.product]
             while len(to_do) > 0:
                 product_name = to_do[0]
                 product_cfg = product_dict.get(product_name, None)
