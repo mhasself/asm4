@@ -34,8 +34,10 @@ class TODCuts(PipelineOp):
             os.remove(self.run_file)
 
     def reset_ok(self):
-        if os.path.exists(self.cuts_path):
-            os.remove(self.cuts_path)
+        for fn in [self.subst(self.cuts_path),
+                   self.subst(self.run_file)]:
+            if os.path.exists(fn):
+                os.remove(fn)
         
 class TODMap(PipelineOp):
     def __init__(self, params):
@@ -64,9 +66,10 @@ class TODMap(PipelineOp):
             os.remove(self.run_file)
 
     def reset_ok(self):
-        for f in self.map_files:
+        for f in self.map_files + [self.run_file]:
+            f = self.subst(f)
             if os.path.exists(f):
-                os.remove(self.map_file)
+                os.remove(f)
         
 class FPFit(PipelineOp):
     def status(self):

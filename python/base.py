@@ -30,8 +30,8 @@ class PipelineOp(object):
 class PipelineScriptOp(PipelineOp):
     def __init__(self, params):
         PipelineOp.__init__(self, params)
-        self.ran_file = params['ran_file']
         self.ok_file = params['ok_file']
+        self.ran_file = params.get('ran_file', self.ok_file)
         self.cmd = params['execute']
         self.places = params.get('make_place', [])
 
@@ -46,17 +46,21 @@ class PipelineScriptOp(PipelineOp):
 
     def run(self):
         for p in self.places:
+            p = self.subst(p)
             if not os.path.exists(p):
                 os.makedirs(p)
         cmd = self.subst(self.cmd)
         return (run_command(cmd) == 0)
 
     def reset_failed(self):
-        if os.path.exists(self.run_file):
-            os.remove(self.run_file)
+        for f in [self.ran_file]:
+            f = self.subst(f)
+            if os.path.exists(f):
+                os.remove(f)
 
     def reset_ok(self):
-        for f in self.map_files:
+        for f in [self.ran_file, self.ok_file]:
+            f = self.subst(f)
             if os.path.exists(f):
-                os.remove(self.map_file)
+                os.remove(f)
         
