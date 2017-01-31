@@ -2,7 +2,7 @@
 asm4?  Yes.
 """
 import subprocess as sp
-import os
+import os, glob
 
 def run_command(cmd):
     if isinstance(cmd, basestring):
@@ -37,9 +37,9 @@ class PipelineScriptOp(PipelineOp):
 
     def status(self):
         for f in [self.ok_file]:
-            if os.path.exists(self.subst(f)):
+            if len(glob.glob(self.subst(f))) > 0:
                 return 'ok'
-        was_run = os.path.exists(self.ran_file)
+        was_run = len(glob.glob(self.ran_file))
         if was_run:
             return 'fail'
         return 'new'
