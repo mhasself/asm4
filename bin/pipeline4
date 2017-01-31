@@ -2,6 +2,7 @@
 
 import asm4
 import moby2
+import os
 
 import optparse
 o = optparse.OptionParser()
@@ -13,9 +14,10 @@ o.add_option('--check', action='store_true',
              help="Perform no actions except to check the product status.")
 o.add_option('--test-item', action='append',
              help="Select one or more items for a test run.")
+o.add_option('--fork', type=int, default=1)
 o.add_option('-p', '--product', action='append',
              help="Select product to produce.")
-o.add_option('--config-file', default='pipeline.in')
+o.add_option('-c', '--config-file', default='pipeline.in')
 opts, args = o.parse_args()
 
 
@@ -55,6 +57,15 @@ def get_tod_info(params, basename):
             info[k] = db[k][i[0]]
     return info
 
+this_fork = 0
+while this_fork < opts.fork-1:
+    id_ = os.fork()
+    if id_ == 0:
+        break
+    this_fork += 1
+
+if opts.fork > 1:
+    print 'This is thread %i' % this_fork
 
 for pipeline_op in cfg['pipeline']:
     op_params = cfg['global_params'].copy()
@@ -66,7 +77,11 @@ for pipeline_op in cfg['pipeline']:
         else:
             blech
             
+        counter = 0
         for basename in db['tod_name']:
+            counter += 1
+            if not counter % opts.fork == this_fork:
+                continue
             if opts.test_item is not None:
                 if not basename in opts.test_item:
                     continue
