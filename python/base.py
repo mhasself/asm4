@@ -19,27 +19,49 @@ def substitute(kwargs, s, max_depth=10):
 
 class PipelineOp(object):
     def __init__(self, params):
+        """
+        The object will be initialized with the parameters specified
+        in the pipeline.in file.
+        """
         self.data = params
     def status(self):
+        """
+        The .status function should assess whether the analysis has
+        been run and whether that was successful, and return one of
+        the following strings:
+
+            'new', 'ok', 'fail'
+        """
         return 'new'
     def run(self):
+        """
+        The .run function should attempt to create the pipeline
+        product; it should treturn True or False depending on whether
+        that was successful.
+        """
         return False
     def subst(self, text):
         return substitute(self.data, text)
 
 class PipelineScriptOp(PipelineOp):
+    """
+    A simple building block operation.  Assumes that the success or
+    failure of the operation can be assessed based on the presence of
+    certain files.  A typical parameter block might look like:
+    {
+    """
     def __init__(self, params):
         PipelineOp.__init__(self, params)
-        self.ok_file = params['ok_file']
+        self.ok_file = params.get('ok_file')
         self.ran_file = params.get('ran_file', self.ok_file)
-        self.cmd = params['execute']
+        self.cmd = params.get('execute')
         self.places = params.get('make_place', [])
 
     def status(self):
         for f in [self.ok_file]:
             if len(glob.glob(self.subst(f))) > 0:
                 return 'ok'
-        was_run = len(glob.glob(self.ran_file))
+        was_run = len(glob.glob(self.subst(self.ran_file)))
         if was_run:
             return 'fail'
         return 'new'
