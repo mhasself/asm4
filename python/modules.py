@@ -92,8 +92,10 @@ class FPFit(PipelineOp):
         return 'new'
 
     def run(self):
-        n_mpi = self.data.get('n_mpi', 4)
-        cmd_prefix = 'mpirun -n %i ' % n_mpi
+        cmd_prefix = ''
+        n_mpi = self.data.get('n_mpi')
+        if n_mpi is not None:
+            cmd_prefix = 'mpirun -n %i ' % n_mpi
         cmd = cmd_prefix + self.subst('fp_fit {params_file} {tod_id}')
         return (run_command(cmd) == 0)
 
