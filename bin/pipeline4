@@ -15,11 +15,11 @@ o.add_option('--check', action='store_true',
 o.add_option('--test-item', action='append',
              help="Select one or more items for a test run.")
 o.add_option('--fork', type=int, default=1)
+o.add_option('--group', type=int, nargs=2, default=None)
 o.add_option('-p', '--product', action='append',
              help="Select product to produce.")
 o.add_option('-c', '--config-file', default='pipeline.in')
 opts, args = o.parse_args()
-
 
 cfg = moby2.util.MobyDict.from_file(opts.config_file)
 
@@ -70,6 +70,16 @@ while this_fork < opts.fork-1:
 
 if opts.fork > 1:
     print 'This is thread %i' % this_fork
+
+mpi = moby2.scripting.MobyMPI()
+if mpi.size > 1:
+    print 'This is thread %i/%i' % (mpi.rank, mpi.size)
+    this_fork = mpi.rank
+    opts.fork = mpi.size
+
+if opts.group is not None:
+    print 'I will do jobs %i/%i' % tuple(opts.group)
+    this_fork, opts.fork = opts.group
 
 for pipeline_op in cfg['pipeline']:
     op_params = cfg['global_params'].copy()
