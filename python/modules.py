@@ -53,38 +53,28 @@ class TODCuts(PipelineScriptOp):
         cmd = self.subst(cmd)
         return (run_command(cmd) == 0)
         
-class TODMap(PipelineOp):
+class TODMap(PipelineScriptOp):
     def __init__(self, params):
-        PipelineOp.__init__(self, params)
-        self.map_files = ['{output_prefix}'+x for x in 
-                          ['source.fits', 'source_I.fits',
-                           'source_split00.fits', 'source_I_split00.fits']]
-        self.run_file = self.subst('{output_prefix}planetMap.par')
-
-    def status(self):
-        for f in self.map_files:
-            if os.path.exists(self.subst(f)):
-                return 'ok'
-        was_run = os.path.exists(self.run_file)
-        if was_run:
-            return 'fail'
-        return 'new'
+        params['execute_output_prefix'] = ('output_prefix' in params)
+        if 'params_file' in params:
+            # Try to decode the cuts config file...
+            map_cfg = moby2.util.MobyDict.from_file(params['params_file'])
+            # By rights any output prefix specified by the user should
+            # override the cuts config output prefix... right now it
+            # prepends, but I define that to be a bug.
+            if not 'output_prefix' in params:
+                params['output_prefix'] = map_cfg.get_deep(('output', 'prefix'))
+        params['ran_file'] = '{output_prefix}planetMap.par'
+        params['ok_file'] = '{output_prefix}source_*.fits'
+        super(TODMap, self).__init__(params)
 
     def run(self):
-        cmd = self.subst('planetMap {params_file} {tod_id} '
-                         '-o {output_prefix}')
+        cmd = 'planetMap {params_file} {tod_id}'
+        if self.data.get('execute_output_prefix'):
+            cmd += ' -o {output_prefix}'
+        cmd = self.subst(cmd)
         return (run_command(cmd) == 0)
 
-    def reset_failed(self):
-        if os.path.exists(self.run_file):
-            os.remove(self.run_file)
-
-    def reset_ok(self):
-        for f in self.map_files + [self.run_file]:
-            f = self.subst(f)
-            if os.path.exists(f):
-                os.remove(f)
-        
 class FPFit(PipelineOp):
     def status(self):
         if os.path.exists(self.subst(self.data['output_file'])):
