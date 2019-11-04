@@ -29,7 +29,7 @@ class TODCuts(PipelineScriptOp):
         params['execute_output_prefix'] = ('output_prefix' in params)
         if 'cuts_params' in params:
             # Try to decode the cuts config file...
-            cuts_cfg = moby2.util.MobyDict.from_file(params['cuts_params'])
+            cuts_cfg = moby2.util.MobyDict.from_file(params['cuts_params'].format(**params))
             # By rights any output prefix specified by the user should
             # override the cuts config output prefix... right now it
             # prepends, but I define that to be a bug.

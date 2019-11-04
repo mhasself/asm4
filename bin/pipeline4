@@ -15,9 +15,11 @@ o.add_option('--check', action='store_true',
 o.add_option('--test-item', action='append',
              help="Select one or more items for a test run.")
 o.add_option('--fork', type=int, default=1)
-o.add_option('--group', type=int, nargs=2, default=None)
+o.add_option('--group', type=int, nargs=2, default=None,
+             help="(this_group, n_groups)")
 o.add_option('-p', '--product', action='append',
              help="Select product to produce.")
+o.add_option('--set', nargs=2, action='append', default=[])
 o.add_option('-c', '--config-file', default='pipeline.in')
 opts, args = o.parse_args()
 
@@ -101,6 +103,12 @@ for pipeline_op in cfg['pipeline']:
                     continue
             print tod_id
             loop_info = get_tod_info(op_params, tod_id)
+            loop_info['group_count'] = opts.fork
+            loop_info['group_idx'] = this_fork
+            # Jam in additional variables?
+            for k,v in opts.set:
+                loop_info[k] = v
+
             product_status = {}
             rolling = True
             if opts.product is None:
