@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+from __future__ import print_function
+from __future__ import absolute_import
+from past.builtins import basestring
 
 import asm4
 import moby2
@@ -28,7 +31,7 @@ cfg = moby2.util.MobyDict.from_file(opts.config_file)
 product_dict = {}
 for p in cfg['products']:
     if p['name'] in product_dict:
-        raise ValueError, "Duplicate 'name'='%s' in products spec." % p['name']
+        raise ValueError("Duplicate 'name'='%s' in products spec." % p['name'])
     product_dict[p['name']] = p
 
 mode = 'normal'
@@ -71,16 +74,16 @@ while this_fork < opts.fork-1:
     this_fork += 1
 
 if opts.fork > 1:
-    print 'This is thread %i' % this_fork
+    print('This is thread %i' % this_fork)
 
 mpi = moby2.scripting.MobyMPI()
 if mpi.size > 1:
-    print 'This is thread %i/%i' % (mpi.rank, mpi.size)
+    print('This is thread %i/%i' % (mpi.rank, mpi.size))
     this_fork = mpi.rank
     opts.fork = mpi.size
 
 if opts.group is not None:
-    print 'I will do jobs %i/%i' % tuple(opts.group)
+    print('I will do jobs %i/%i' % tuple(opts.group))
     this_fork, opts.fork = opts.group
 
 for pipeline_op in cfg['pipeline']:
@@ -101,7 +104,7 @@ for pipeline_op in cfg['pipeline']:
             if opts.test_item is not None:
                 if not tod_id in opts.test_item:
                     continue
-            print tod_id
+            print(tod_id)
             loop_info = get_tod_info(op_params, tod_id)
             loop_info['group_count'] = opts.fork
             loop_info['group_idx'] = this_fork
@@ -119,7 +122,7 @@ for pipeline_op in cfg['pipeline']:
                 product_name = to_do[0]
                 product_cfg = product_dict.get(product_name, None)
                 if product_cfg is None:
-                    raise ValueError, "product_name='%s' DNE" % product_name
+                    raise ValueError("product_name='%s' DNE" % product_name)
                 # Check that dependencies are met.
                 params = op_params.copy()
                 params.update(product_cfg.get('params', {}))
@@ -143,15 +146,15 @@ for pipeline_op in cfg['pipeline']:
 
                 to_do.remove(product_name)
                 if product_cfg is None:
-                    raise ValueError, "product_name='%s' DNE" % product_name
+                    raise ValueError("product_name='%s' DNE" % product_name)
                 params.update(loop_info)
                 obj = asm4.obj_map[product_cfg['type']](params)
                 stat = obj.status()
                 product_status[product_name] = stat
                 if mode == 'normal':
-                    print ' ', tod_id, product_name, stat
+                    print(' ', tod_id, product_name, stat)
                     if stat == 'new':
-                        print 'Running %s for %s' % (product_name, tod_id)
+                        print('Running %s for %s' % (product_name, tod_id))
                         obj.run()
                         stat = obj.status()
                         product_status[product_name] = stat
@@ -160,13 +163,13 @@ for pipeline_op in cfg['pipeline']:
                     if stat == 'fail':
                         break
                 elif opts.check:
-                    print ' ', tod_id, product_name, stat
+                    print(' ', tod_id, product_name, stat)
                     if stat != 'ok':
                         break
                 elif product_name in opts.retry:
                     if stat == 'fail':
-                        print 'Retrying %s for %s' % (product_name, tod_id)
+                        print('Retrying %s for %s' % (product_name, tod_id))
                         obj.reset_failed()
                 elif product_name in opts.reset:
-                    print 'Resetting %s for %s' % (product_name, tod_id)
+                    print('Resetting %s for %s' % (product_name, tod_id))
                     obj.reset_ok()

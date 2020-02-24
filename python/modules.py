@@ -1,4 +1,8 @@
-from base import PipelineOp, PipelineScriptOp, run_command
+from __future__ import print_function
+from __future__ import absolute_import
+from past.builtins import basestring
+
+from .base import PipelineOp, PipelineScriptOp, run_command
 
 import moby2
 import os

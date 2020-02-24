@@ -1,6 +1,10 @@
 """
 asm4?  Yes.
 """
+from __future__ import print_function
+from __future__ import absolute_import
+from past.builtins import basestring
+
 import subprocess as sp
 import os, glob
 
@@ -77,12 +81,12 @@ class PipelineScriptOp(PipelineOp):
     def reset_failed(self):
         for f in [self.ran_file]:
             for f2 in glob.glob(self.subst(f)):
-                print 'Removing', f2
+                print('Removing', f2)
                 os.remove(f2)
 
     def reset_ok(self):
         for f in [self.ran_file, self.ok_file]:
             for f2 in glob.glob(self.subst(f)):
-                print 'Removing', f2
+                print('Removing', f2)
                 os.remove(f2)
         
