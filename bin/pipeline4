@@ -6,6 +6,7 @@ from past.builtins import basestring
 import asm4
 import moby2
 import os
+import fnmatch
 
 import optparse
 o = optparse.OptionParser()
@@ -23,6 +24,8 @@ o.add_option('--group', type=int, nargs=2, default=None,
 o.add_option('-p', '--product', action='append',
              help="Select product to produce.")
 o.add_option('--set', nargs=2, action='append', default=[])
+o.add_option('--exclusive', action='store_true',
+             help="Use a lockfile to prevent other pipeline runs on same config file.")
 o.add_option('-c', '--config-file', default='pipeline.in')
 opts, args = o.parse_args()
 
@@ -61,7 +64,10 @@ def get_tod_info(params, tod_id):
         else:
             db = moby2.util.StructDB.from_fits_table(fn)
             obs_db = (fn, db)
-        i = db.select_inner({'tod_name': [tod_id]})
+        tod_key = 'tod_id'
+        if not tod_key in db.dtype.names:
+            tod_key = 'tod_name'
+        i = db.select_inner({tod_key: [tod_id]})
         for k in params['obs_db_load']:
             info[k] = db[k][i[0]]
     return info
@@ -75,6 +81,15 @@ while this_fork < opts.fork-1:
 
 if opts.fork > 1:
     print('This is thread %i' % this_fork)
+else:
+    # Note this doesn't work with forking yet...
+    if opts.exclusive:
+        import filelock
+        lock = filelock.FileLock(opts.config_file + '.lock')
+        try:
+            lock.acquire(timeout=1)
+        except Timeout:
+            o.error('Could not acquire lock.')
 
 mpi = moby2.scripting.MobyMPI()
 if mpi.size > 1:
@@ -102,7 +117,10 @@ for pipeline_op in cfg['pipeline']:
             if not counter % opts.fork == this_fork:
                 continue
             if opts.test_item is not None:
-                if not tod_id in opts.test_item:
+                for pattern in opts.test_item:
+                    if fnmatch.fnmatchcase(tod_id, pattern):
+                        break
+                else:
                     continue
             print(tod_id)
             loop_info = get_tod_info(op_params, tod_id)
